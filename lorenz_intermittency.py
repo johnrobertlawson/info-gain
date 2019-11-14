@@ -21,6 +21,7 @@ import os
 import pdb
 
 import numpy as N
+import matplotlib as M
 import matplotlib.pyplot as plt
 
 def lorenz(x,y,z,sigma=10,b=2.667,r=28):
@@ -30,33 +31,80 @@ def lorenz(x,y,z,sigma=10,b=2.667,r=28):
     return xdot, ydot, zdot
 
 dt = 0.0005
-ntotal=100000
+ntotal=20100
+#ntotal=101000
 X0=0.5
 Y0=1.5
-Z0=1.55
+Z0=11.1
+r = 166.08
+pc = 99.3
 
-rs = [166,166.04,166.06,166.08]
-fig,axes = plt.subplots(nrows=4)
+fig,axes = plt.subplots(nrows=3)
 
-for ax, r in zip(axes.flat,rs):
-    X = N.empty(ntotal+1)
-    Y = N.empty(ntotal+1)
-    Z = N.empty(ntotal+1)
+# Fig 1a: time series
+ax = axes.flat[0]
 
-    X[0] = X0
-    Y[0] = Y0
-    Z[0] = Z0
+X = N.empty(ntotal+1)
+Y = N.empty(ntotal+1)
+Z = N.empty(ntotal+1)
 
-    for n in range(ntotal):
-        xdot, ydot, zdot = lorenz(X[n],Y[n],Z[n],r=r)
-        X[n+1] = X[n] + (dt*xdot) 
-        Y[n+1] = Y[n] + (dt*ydot)
-        Z[n+1] = Z[n] + (dt*zdot)
+X[0] = X0
+Y[0] = Y0
+Z[0] = Z0
 
-    ax.plot(Z)
-    print("Done.")
+for n in range(ntotal):
+    xdot, ydot, zdot = lorenz(X[n],Y[n],Z[n],r=r)
+    X[n+1] = X[n] + (dt*xdot) 
+    Y[n+1] = Y[n] + (dt*ydot)
+    Z[n+1] = Z[n] + (dt*zdot)
+
+print("Done.")
+
+Z = Z[1000:]
+
+ax.plot(Z)
+pc_y = N.percentile(Z,pc)
+ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
+ax.set_xlim([0,ntotal-1000])
+
+# Figure 1b: discretisation
+ax = axes.flat[1]
+
+exceed = N.where(Z > pc_y,1,0)
+exceed = exceed[N.newaxis,:]
+ax.pcolormesh(exceed,cmap=M.cm.cubehelix_r)
+
+# Fig 1c: turn into a 30x24 hour "tornado in oklahoma" plot
+# 100 days, 24 hours, 41 time steps for each hour
+ax = axes.flat[2]
+len_array = int((ntotal - 1000)/41)
+newarray = N.zeros([len_array])
+
+for i in range(len(newarray)):
+    z = Z[i*41:((i+1)*41)+1]
+    if z.max() > pc_y:
+        newarray[i] = 1
+    # pdb.set_trace()
+newarray = newarray[N.newaxis,:]
+ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
 
 fname = "lorenz_test.png"
 fpath = fname
 fig.tight_layout()
 fig.savefig(fpath)
+
+""" For each "truth" time with a True, run two ensembles
+with differing "errors" in ICs and random drift/perturbations
+to mimic model error. So four places? Do same discretisation. Need to also
+create probabilities.
+
+Now evaluate with BS, DS, CSI. 
+
+Now allow time tolerance of +/- x hours, and reevaluate
+
+Do we see DS reward rare events better?
+
+Need 50-member ensemble to make sure the pdf is well captured
+"""
+
+
