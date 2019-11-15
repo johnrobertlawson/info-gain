@@ -41,6 +41,7 @@ Z0=11.1
 r = 166.08
 pc = 99.3
 nmembers = 50
+spinup_len = 2000
 
 fig,axes = plt.subplots(nrows=3)
 
@@ -63,12 +64,12 @@ for n in range(ntotal):
 
 print("Done.")
 
-Z = Z[1000:]
+Z = Z[spinup_len:]
 
 ax.plot(Z)
 pc_y = N.percentile(Z,pc)
 ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
-ax.set_xlim([0,ntotal-1000])
+ax.set_xlim([0,ntotal-spinup_len])
 
 # Figure 1b: discretisation
 ax = axes.flat[1]
@@ -80,7 +81,7 @@ ax.pcolormesh(exceed,cmap=M.cm.cubehelix_r)
 # Fig 1c: turn into a 30x24 hour "tornado in oklahoma" plot
 # 100 days, 24 hours, 41 time steps for each hour
 ax = axes.flat[2]
-len_array = int((ntotal - 1000)/41)
+len_array = int((ntotal - spinup_len)/41)
 newarray = N.zeros([len_array])
 
 for i in range(len(newarray)):
@@ -109,7 +110,7 @@ Do we see DS reward rare events better?
 
 Need 50-member ensemble to make sure the pdf is well captured
 """
-z_ts = N.zeros([ntotal-999,nmembers])
+z_ts = N.zeros([ntotal-(1+spinup_len),nmembers])
 
 # Fix random seed
 random.seed(1)
@@ -136,7 +137,7 @@ for nmem in range(nmembers):
 
     print(f"Done ensemble member {nmem+1}.")
 
-    z_ts[:,nmem] = Z[1000:]
+    z_ts[:,nmem] = Z[spinup_len:]
 
 # Plot these members
 fig,axes = plt.subplots(nrows=6)
@@ -145,14 +146,14 @@ ax = axes.flat[0]
 ax.plot(Z)
 pc_y = N.percentile(Z,pc)
 ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
-ax.set_xlim([0,ntotal-1000])
+ax.set_xlim([0,ntotal- spinup_len])
 
 for nmem in range(5):
     ax = axes.flat[nmem+1]
     ax.plot(z_ts[:,nmem])
     pc_y = N.percentile(Z,pc)
     ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
-    ax.set_xlim([0,ntotal-1000])
+    ax.set_xlim([0,ntotal- spinup_len])
     ax.set_ylim([0,300])
 
 fname = "example_ensemble.png"
