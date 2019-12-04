@@ -33,15 +33,16 @@ def lorenz(x,y,z,sigma=10,b=2.667,r=28):
     return xdot, ydot, zdot
 
 dt = 0.0005
-ntotal=20100
+ntotal_raw=20000
 #ntotal=101000
 X0=0.5
 Y0=1.5
 Z0=11.1
 r = 166.08
-pc = 99.3
+pc = 99
 nmembers = 50
-spinup_len = 2000
+spinup_len = 1000
+ntotal = ntotal_raw + spinup_len
 
 fig,axes = plt.subplots(nrows=3)
 
@@ -65,16 +66,17 @@ for n in range(ntotal):
 print("Done.")
 
 Z = Z[spinup_len:]
+TRUTH = Z
 
-ax.plot(Z)
-pc_y = N.percentile(Z,pc)
+ax.plot(TRUTH)
+pc_y = N.percentile(TRUTH,pc)
 ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
 ax.set_xlim([0,ntotal-spinup_len])
 
 # Figure 1b: discretisation
 ax = axes.flat[1]
 
-exceed = N.where(Z > pc_y,1,0)
+exceed = N.where(TRUTH > pc_y,1,0)
 exceed = exceed[N.newaxis,:]
 ax.pcolormesh(exceed,cmap=M.cm.cubehelix_r)
 
@@ -84,6 +86,7 @@ ax = axes.flat[2]
 len_array = int((ntotal - spinup_len)/41)
 newarray = N.zeros([len_array])
 
+# temporal filtering
 for i in range(len(newarray)):
     z = Z[i*41:((i+1)*41)+1]
     if z.max() > pc_y:
@@ -91,6 +94,7 @@ for i in range(len(newarray)):
     # pdb.set_trace()
 newarray = newarray[N.newaxis,:]
 ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+TRUTH_FILTERED = newarray
 
 fname = "lorenz_test.png"
 fpath = fname
@@ -110,7 +114,7 @@ Do we see DS reward rare events better?
 
 Need 50-member ensemble to make sure the pdf is well captured
 """
-z_ts = N.zeros([ntotal-(1+spinup_len),nmembers])
+z_ts = N.zeros([ntotal-(spinup_len-1),nmembers])
 
 # Fix random seed
 random.seed(1)
@@ -121,7 +125,7 @@ for nmem in range(nmembers):
     Z = N.empty(ntotal+1)
 
     # Add random perturbations to IC-error
-    maxpert = 0.0001
+    maxpert = 0.00001
     pert = random.uniform(-maxpert,maxpert)
 
     X[0] = X0 + pert
@@ -131,32 +135,87 @@ for nmem in range(nmembers):
     # Add random perturbations for model-error
     for n in range(ntotal):
         xdot, ydot, zdot = lorenz(X[n],Y[n],Z[n],r=r)
-        X[n+1] = X[n] + (dt*xdot) + (pert*X[n])
-        Y[n+1] = Y[n] + (dt*ydot) + (pert*Y[n])
-        Z[n+1] = Z[n] + (dt*zdot) + (pert*Z[n])
+        X[n+1] = X[n] + (dt*xdot) + pert #(pert*X[n])
+        Y[n+1] = Y[n] + (dt*ydot) + pert #(pert*Y[n])
+        Z[n+1] = Z[n] + (dt*zdot) + pert #(pert*Z[n])
 
     print(f"Done ensemble member {nmem+1}.")
 
     z_ts[:,nmem] = Z[spinup_len:]
 
+
 # Plot these members
-fig,axes = plt.subplots(nrows=6)
+mems = 4
+fig,axes = plt.subplots(nrows=2+(mems*2))
 
 ax = axes.flat[0]
-ax.plot(Z)
-pc_y = N.percentile(Z,pc)
+ax.plot(TRUTH)
 ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
-ax.set_xlim([0,ntotal- spinup_len])
+ax.set_xlim([0,ntotal-spinup_len])
+ax.set_ylim([0,300])
 
-for nmem in range(5):
-    ax = axes.flat[nmem+1]
+ax = axes.flat[1]
+ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+
+members_plot = N.arange(mems)
+axes_plot = (N.arange(mems)*2)+2
+
+for nmem, nax in zip(members_plot,axes_plot):
+    ax = axes.flat[nax]
     ax.plot(z_ts[:,nmem])
     pc_y = N.percentile(Z,pc)
     ax.axhline(pc_y,color='red',zorder=101,lw=0.5)
-    ax.set_xlim([0,ntotal- spinup_len])
+    ax.set_xlim([0,ntotal-spinup_len])
     ax.set_ylim([0,300])
 
+    newarray = N.zeros([len_array])
+
+    ax = axes.flat[nax+1]
+
+    # temporal filtering
+    for i in range(len(newarray)):
+        z = z_ts[:,nmem][i*41:((i+1)*41)+1]
+        if z.max() > pc_y:
+            newarray[i] = 1
+        # pdb.set_trace()
+    newarray = newarray[N.newaxis,:]
+    ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+    print("Plotted axis",nax+1)
+
 fname = "example_ensemble.png"
+fpath = fname
+fig.tight_layout()
+fig.savefig(fpath)
+
+
+# Plot JUST FAKE NADER DAYS
+nmems = 7
+fig,axes = plt.subplots(nrows=nmems+1)
+
+ax = axes.flat[0]
+ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+
+members_plot = N.arange(nmems)
+axs = axes.flat[1:]
+for nmem, nax in zip(members_plot,axs):
+    # ax = axes.flat[nax]
+    ax = nax
+    pc_y = N.percentile(Z,pc)
+    # ax.set_xlim([0,ntotal-spinup_len])
+    # ax.set_ylim([0,300])
+
+    newarray = N.zeros([len_array])
+
+    # temporal filtering
+    for i in range(len(newarray)):
+        z = z_ts[:,nmem][i*41:((i+1)*41)+1]
+        if z.max() > pc_y:
+            newarray[i] = 1
+    newarray = newarray[N.newaxis,:]
+    ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+    print("Plotted axis",nmem)
+
+fname = "example_ensemble_discrete.png"
 fpath = fname
 fig.tight_layout()
 fig.savefig(fpath)
