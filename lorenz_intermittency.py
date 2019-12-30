@@ -32,14 +32,18 @@ def lorenz(x,y,z,sigma=10,b=2.667,r=28):
     zdot = x*y - b*z
     return xdot, ydot, zdot
 
+# temporal granularity of the integration
 dt = 0.0005
-ntotal_raw=20000
+#ntotal_raw=20000
+ntotal_raw=30000
 #ntotal=101000
 X0=0.5
 Y0=1.5
 Z0=11.1
-r = 166.08
-pc = 99
+# r = 166.08
+r = 166.09
+# pc = 99
+pc = 97
 nmembers = 50
 spinup_len = 1000
 ntotal = ntotal_raw + spinup_len
@@ -116,8 +120,7 @@ Need 50-member ensemble to make sure the pdf is well captured
 """
 z_ts = N.zeros([ntotal-(spinup_len-1),nmembers])
 
-# Fix random seed
-random.seed(1)
+
 
 for nmem in range(nmembers):
     X = N.empty(ntotal+1)
@@ -189,11 +192,13 @@ fig.savefig(fpath)
 
 
 # Plot JUST FAKE NADER DAYS
-nmems = 7
-fig,axes = plt.subplots(nrows=nmems+1)
+nmems = 9
+fig,axes = plt.subplots(nrows=nmems+1,figsize=(15,12))
 
 ax = axes.flat[0]
-ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
+ax.pcolormesh(newarray,cmap=M.cm.Reds)
+ax.axes.get_xaxis().set_visible(False)
+ax.axes.get_yaxis().set_visible(False)
 
 members_plot = N.arange(nmems)
 axs = axes.flat[1:]
@@ -202,6 +207,8 @@ for nmem, nax in zip(members_plot,axs):
     ax = nax
     pc_y = N.percentile(Z,pc)
     # ax.set_xlim([0,ntotal-spinup_len])
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
     # ax.set_ylim([0,300])
 
     newarray = N.zeros([len_array])
@@ -215,7 +222,7 @@ for nmem, nax in zip(members_plot,axs):
     ax.pcolormesh(newarray,cmap=M.cm.cubehelix_r)
     print("Plotted axis",nmem)
 
-fname = "example_ensemble_discrete.png"
+fname = "firstgroup_ensemble_discrete.png"
 fpath = fname
 fig.tight_layout()
 fig.savefig(fpath)
