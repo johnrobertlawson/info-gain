@@ -24,16 +24,8 @@ Experiments/verification (permutation of some below, e.g. with/without tolerance
         on the continuous data)
 """
 
-class Verif:
-    def __init__(self,):
-        """
-        Args:
-            * What
-        """
+def compute_IGsa(self):
         pass
 
-    def IGsa(self):
-        pass
-
-    def eFSS(self):
+def compute_eFSS(self):
         pass

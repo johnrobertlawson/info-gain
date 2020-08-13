@@ -6,12 +6,8 @@ TODO:
     * Spectrum showing long tail of intermittent models (w.r.t. regime [r])
 """
 
-class Plotting:
-    def __init__(self,):
-        pass
+def line_raw(self,):
+    pass
 
-    def line_raw(self,):
-        pass
-
-    def power_spectrum(self,):
-        pass 
+def power_spectrum(self,):
+    pass

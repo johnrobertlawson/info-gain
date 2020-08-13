@@ -129,6 +129,9 @@ def discretise_ts(Z,size):
     # return Z_discrete[N.newaxis,:]#.astype(bool)
     return Z_discrete#.astype(bool)
 
+
+# JRL: one of the next two functions might be superfluous?
+
 def identify_features(data,threshold,footprint,dx):
     """ Need to remember to cut times during spin-up time.
     """

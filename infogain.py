@@ -46,5 +46,29 @@ TODO:
 
 import os
 import pdb
+import multiprocessing
 
-import numpy as N 
+import numpy as N
+
+from lorenz63 import Lorenz63
+import plotting
+import verif
+
+# Parallelise throughout!
+
+# CREATE MODEL
+L63 = Lorenz63()
+
+# Generate truth with intermittent ICs from that book/paper...
+# Constants for truth
+r = 166.08
+b = 0 # Lorenz 63 default value
+sigma = 0 # Lorenz 63 default value
+
+# These three are assigned by Lorenz 1963, rather than for B-R convection 80s papers
+X0 = 0
+Y0 = 1
+Z0 = 0
+
+RAW = L63.generate_time_series(X0=X0,Y0=Y0,Z0=Z0,r=r,b=b,sigma=sigma,)
+TRUTH =
