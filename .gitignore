@@ -1,2 +1,5 @@
 *.swp
+*.swo
 data/
+.idea/
+.ipynb_checkpoints/
