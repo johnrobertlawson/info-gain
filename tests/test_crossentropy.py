@@ -5,59 +5,55 @@ TODO:
 
 John R. Lawson,  Valpo Uni 2022
 """
-
+import logging
 import pytest
 import copy
 
 import numpy as np
 
+# https://stackoverflow.com/questions/4673373/logging-within-pytest-tests
+LOGGER = logging.getLogger(__name__)
 
 class TestCrossEntropy:
+    fo_pairs = [
+                (1,0),      # Passing integers
+                (0,1),      # sim.
+                (1,1),      # sim.
+                (0,0),      # sim.
+                (0.4,1.0),  # Bounded fcst; binary obs
+                (0.4,0.0),  # sim.
+                (1.0,0.0),  # Unbounded; binary obs
+                (1.0,1.0),  # sim.
+                (0.0,0.0),  # sim.
+                (0.0,1.0),  # sim.
+                (0.4,0.99), # Bounded; unc obs
+                (0.4,0.01), # sim.
+                (1.0,0.01), # Unbounded; unc obs
+                (1.0,0.99), # sim.
+                (0.0,0.01), # sim.
+                (0.0,0.99), # sim.
+                (0.0,0.0),  # Same values together
+                (0.02,0.02),# sim.
+                (0.98,0.98),# sim.
+                (1.0,1.0),  # sim.
+                (0.02,0.01),# More error in fcst
+                (0.01,0.02) # More error in obs (valid?!)
+                (0.02,0.0)  # No error in obs (close to certainty)
+                (0.6,1.0)   # sim.
+            ]
 
-    # self.setup()
-    # XES = CrossEntropy()
-    # self.XES = CrossEntropy()
+    @pytest.fixture()
+    def setup(f,o):
+        XES = CrossEntropy(f,o)
+        return XES
 
-    # @pytest.fixture()
-    # def setup(f,o):
-    #     XES = CrossEntropy(f,o)
-
-    # @pytest.fixture()
-    # def bound(n,low,high):
-        # n can be integer, float, numpy array of either, list/tuple of either
-        # keep between low and high
-        # pass
-
-    def test_one_fcst_perms(self):
-        """Can I do permutations, but how do I check the "true" value of each?
-        What is most elegant, an "answers" list?
-        """
-        fo_pairs = [
-                    (1,0),      # Passing integers
-                    (0,1),      # sim.
-                    (1,1),      # sim.
-                    (0,0),      # sim.
-                    (0.4,1.0),  # Bounded fcst; binary obs
-                    (0.4,0.0),  # sim.
-                    (1.0,0.0),  # Unbounded; binary obs
-                    (1.0,1.0),  # sim.
-                    (0.0,0.0),  # sim.
-                    (0.0,1.0),  # sim.
-                    (0.4,0.99), # Bounded; unc obs
-                    (0.4,0.01), # sim.
-                    (1.0,0.01), # Unbounded; unc obs
-                    (1.0,0.99), # sim.
-                    (0.0,0.01), # sim.
-                    (0.0,0.99), # sim.
-                    (0.0,0.0),  # Same values together
-                    (0.02,0.02),# sim.
-                    (0.98,0.98),# sim.
-                    (1.0,1.0),  # sim.
-                    (0.02,0.01),# More error in fcst
-                    (0.01,0.02) # More error in obs (valid?!)
-                    (0.02,0.0)  # No error in obs (close to certainty)
-                    (0.6,1.0)   # sim.
-                ]
+    @pytest.mark.parametrize("f,o",fo_pairs)
+    def test_one_fcst_xes(self,f,o):
+        XES = CrossEntropy(f,o)
+        xes = XES.compute_XES()
+        LOGGER.info(f"Using {f=} and {o=} gives {xes}.")
+        assert isinstance(xes,float)
+        return
 
     def test_one_fcst_bounded_binaryobs(self):
         f = 0.4
