@@ -9,7 +9,7 @@ from scipy.stats import gmean as geomean
 
 
 class CrossEntropy:
-    """ For computing and visualising skill scores for a probabilistic forecast.
+    """ For computing and visualising skill scores for probabilistic forecast.
     Currently for two categories (binary) only, but with observational error.
     """
     def __init__(self,f,o,fk=None):
