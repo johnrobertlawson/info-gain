@@ -7,31 +7,32 @@ import numpy as np
 
 from scipy.stats import gmean as geomean
 
-
 class CrossEntropy:
-    """ For computing and visualising skill scores for probabilistic forecast.
-    Currently for two categories (binary) only, but with observational error.
-    """
-    def __init__(self,f,o,fk=None):
-        """ Initialise the suite.
+    def __init__(self,f,o,fk=None,unc=None,log_base=2,):
+        """Compute the cross-entropy and optionally its components.
+
+        An error will raise if binary values are passed in. Use the bounding
+        staticmethod if you need to bound.
+
         Args:
-        f:  1-D prob forecasts [0,1]. The probabilities should be bounded to
-                  avoid divergence to infinity
-        o:  1-D obs forecast [0,1], may or may not include obs uncertainty
-        fk: 1-D array of probability levels. If None, compute automatically.
+            (copy from BrierScore)
         """
         self.f = np.array(f)
         self.o = np.array(o)
-        self.logbase = 2
+
+        # Check for binary values in forecast
+        self.log_base = log_base
+        if log_base is not 2:
+            raise NotImplementedError
+
         # self.use_mean = "geometric"
         self.use_mean = "arithmetic"
 
-        if fk == None:
+        if fk is None:
             self.fk = np.unique(self.f)
         else:
-            raise Exception
-            # NOT IMPLEMENTED
-            # self.fk = fk
+            self.fk = fk
+            raise NotImplementedError
 
     def do_mean(self,n):
         if self.use_mean == "geometric":
@@ -49,13 +50,17 @@ class CrossEntropy:
         """ Kullback-Liebler Divergence
 
         Args:
-        x   : 1-D (e.g., observations)
-        y   : 1-D (e.g., forecasts)
+            x   : 1-D (e.g., observations)
+            y   : 1-D (e.g., forecasts)
+
+        The array with "atoms" (timesteps) is preserved for use in e.g. looking
+        at individual events (however unrepresentative they can be).
         """
         if not isinstance(x,np.ndarray):
             x = np.array([x,])
         if not isinstance(y,np.ndarray):
             y = np.array([y,])
+
         with np.errstate(divide='ignore',invalid='ignore'):
             # Enforce array so we can remove nans
             term1 = (1-x) * np.log2((1-x)/(1-y))
@@ -72,34 +77,18 @@ class CrossEntropy:
             return DKL, DKL_all
         return DKL
 
-    def compute_XESS(self,from_components=False):
-        UNC = self.compute_UNC()
-        XES = self.compute_XES(from_components=from_components)
-        XESS = (XES-UNC)/(0-UNC)
-        return XESS
-
     @staticmethod
-    def compute_entropy(x,return_all=False):
-        """ Average surprise. A series of surprise
-        values are returned if return_all is True.
-        """
-        with np.errstate(divide='ignore',invalid='ignore'):
-            H_all = (-(1-x) * np.log2(1-x)) - (x * np.log2(x))
-        H = np.mean(H_all)
-        if return_all:
-            return H, H_all
-        return H
+    def _compute_xes(f,o):
+        XES = np.mean(-((1-o)*np.log2(1-f)) - (o*np.log2(f)))
+        return XES
 
-    def compute_XES(self,from_components=False,return_all=False,use_dkl=False):
+    def get_xes(self,from_components=False,return_all=False,use_dkl=False):
         """ Cross-entropy score.
-
-        Args:
-
         """
         if from_components:
-            REL = self.compute_REL()
-            DSC = self.compute_DSC()
-            UNC = self.compute_UNC()
+            REL = self.compute_rel()
+            DSC = self.compute_dsc()
+            UNC = self.compute_unc()
             XES = REL-DSC+UNC
         elif use_dkl:
             if return_all:
@@ -108,34 +97,48 @@ class CrossEntropy:
                 XES = self.compute_DKL(self.o,self.f)
         else:
             with np.errstate(divide='ignore',invalid='ignore'):
-                XES = np.mean(-((1-self.o)*np.log2(1-self.f))-
-                        (self.o*np.log2(self.f)))
+                XES = self._compute_xes(self.f,self.o)
 
         if return_all:
             return XES, XES_all
         return XES
 
-    def compute_REL(self):
-        rel = np.zeros_like(self.fk)
+    @staticmethod
+    def _compute_entropy(x):
+        return (-(1-x) * np.log2(1-x)) - (x * np.log2(x))
+
+    @classmethod
+    def get_entropy(cls,x,return_all=False):
+        """ Average surprise. A series of values are returned if return_all.
+        """
+        with np.errstate(divide='ignore',invalid='ignore'):
+            H_all = cls._compute_entropy(x)
+        H = np.mean(H_all)
+        if return_all:
+            return H, H_all
+        return H
+
+    def compute_rel(self):
+        rel_all = np.zeros_like(self.fk)
         for nk,k in enumerate(self.fk):
             ok = self.o[self.f==k]
             if ok.size != 0:
                 ok_hat = self.do_mean(ok)
-                rel[nk] = ok.size * self.compute_DKL(ok_hat,k)
-        REL = np.sum(rel)/self.o.size
-        print(f"{rel=}, REL = {REL:.4f}")
+                rel_all[nk] = ok.size * self.compute_DKL(ok_hat,k)
+        REL = np.sum(rel_all)/self.o.size
+        print(f"{rel_all=}, REL = {REL:.4f}")
         return REL
 
-    def compute_DSC(self):
-        dsc = np.zeros_like(self.fk)
+    def compute_dsc(self):
+        dsc_all = np.zeros_like(self.fk)
         for nk,k in enumerate(self.fk):
             ok = self.o[self.f==k]
             if ok.size != 0:
                 ok_hat = self.do_mean(ok)
                 o_hat = self.do_mean(self.o)
-                dsc[nk] = ok.size * self.compute_DKL(ok_hat,o_hat)
-        DSC = np.sum(dsc)/self.o.size
-        print(f"{dsc=}, DSC = {DSC:.4f}")
+                dsc_all[nk] = ok.size * self.compute_DKL(ok_hat,o_hat)
+        DSC = np.sum(dsc_all)/self.o.size
+        print(f"{dsc_all=}, DSC = {DSC:.4f}")
         return DSC
 
     def __compute_UNC(self):
@@ -164,3 +167,10 @@ class CrossEntropy:
         x[x<thresh] = thresh
         x[x>(1-thresh)] = 1-thresh
         return x
+
+    def compute_xess(self,from_components=False):
+        UNC = self.compute_UNC()
+        XES = self.compute_XES(from_components=from_components)
+        XESS = (XES-UNC)/(0-UNC)
+        return XESS
+
