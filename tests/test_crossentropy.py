@@ -46,7 +46,6 @@ def create_bounded_low(rng,raw_vals):
     # Randomised ob error versus consistent
 
 
-
 # All permutations of forecast-observation pairs for testing of XES
 # TODO: Both single pairs and a simulated time series
 

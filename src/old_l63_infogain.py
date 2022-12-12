@@ -50,7 +50,7 @@ import multiprocessing
 
 import numpy as N
 
-from lorenz63 import Lorenz63
+from lorenz63_old import Lorenz63
 import plotting
 import verif
 
