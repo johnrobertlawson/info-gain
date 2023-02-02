@@ -1,5 +1,3 @@
-import pdb
-
 import numpy as np
 import pandas as pd
 
@@ -9,7 +7,7 @@ pd.set_option("display.precision",4)
 pd.set_option("display.float_format",'{:.4f}'.format)
 
 class BrierScore:
-    def __init__(self,f,o,fk=None,unc=None):
+    def __init__(self,f,o,fk=None):
         """Compute the Brier Score and optionally components.
 
         Args:
@@ -34,17 +32,7 @@ class BrierScore:
             # stats for automatic bins.
             raise NotImplementedError
 
-        self.unc = unc
-
-    @staticmethod
-    def do_mean(x):
-        """Custom mean function due to arithmetic v geometric mean.
-        """
-        if isinstance(x,(float,int)):
-            return x
-        # Duck-typed so that collections are averaged; it breaks otherwise
-        else:
-            return np.mean(x)
+        pass
 
     @staticmethod
     def _compute_bs(f,o):
@@ -53,27 +41,21 @@ class BrierScore:
         Args:
             f,o (int, float, numpy.array):  forecast and obs fraction, resp.
         """
-        return np.sum((f-o)**2)
+        return np.mean((f-o)**2)
 
-    def get_bs(self,from_components=False):
+    def compute_bs(self,from_components=False):
         if from_components:
-            REL = self.compute_REL()
-            DSC = self.compute_DSC()
-            UNC = self.compute_UNC()
+            REL = self.compute_rel()
+            DSC = self.compute_dsc()
+            UNC = self.compute_unc()
             return REL - DSC + UNC
         else:
             return self._compute_bs(self.f,self.o)
 
     def compute_unc(self):
-        # For testing
-        obs_unc = True
-        if obs_unc:
-            # Including observational error
-            UNC = np.sum((self.o-self.do_mean(self.o))**2)/self.o.size
-        else:
-            # Not...
-            UNC = self.do_mean(self.o) * (1-self.do_mean(self.o))
-        print(f"UNC = {UNC:.4f} (with {ob_unc=})")
+        UNC = np.sum((self.o-np.mean(self.o))**2)/self.o.size
+        # UNC = np.mean(self.o) * (1-np.mean(self.o))
+        print(f"UNC = {UNC:.4f}")
         return UNC
 
     def compute_rel(self):
@@ -83,7 +65,7 @@ class BrierScore:
         for nk,k in enumerate(self.fk):
             ok = self.o[self.f==k]
             if ok.size != 0:
-                ok_bar = self.do_mean(ok)
+                ok_bar = np.mean(ok)
                 rel_all[nk] = ok.size * ((k-ok_bar)**2)
         REL = np.sum(rel_all)/self.o.size
         print(f"{rel_all=}, REL = {REL:.4f}")
@@ -91,21 +73,18 @@ class BrierScore:
 
     def compute_dsc(self):
         dsc_all = np.zeros_like(self.fk)
-        o_bar = self.do_mean(self.o)
+        o_bar = np.mean(self.o)
         for nk,k in enumerate(self.fk):
             ok = self.o[self.f==k]
             if ok.size != 0:
-                ok_bar = self.do_mean(ok)
+                ok_bar = np.mean(ok)
                 dsc_all[nk] = ok.size * ((ok_bar-o_bar)**2)
         DSC = np.sum(dsc_all)/self.o.size
         print(f"{dsc_all=}, DSC = {DSC:.4f}")
         return DSC
 
     def compute_bss(self,from_components=False):
-        if self.unc is not None:
-            UNC = self.compute_UNC()
-        else:
-            UNC = self.unc
-        BS = self.get_bs(from_components=from_components)
+        UNC = self.compute_unc()
+        BS = self.compute_bs(from_components=from_components)
         BSS = (BS-UNC)/(0-UNC)
         return BSS

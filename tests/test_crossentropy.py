@@ -49,6 +49,8 @@ def create_bounded_low(rng,raw_vals):
 # All permutations of forecast-observation pairs for testing of XES
 # TODO: Both single pairs and a simulated time series
 
+# PERSERVERE LOL
+
 test_args = [
     # TODO: Work out the correct answer to each
     ########### SILLY VALUES ############

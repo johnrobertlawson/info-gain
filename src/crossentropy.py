@@ -22,7 +22,7 @@ class CrossEntropy:
 
         # Check for binary values in forecast
         self.log_base = log_base
-        if log_base is not 2:
+        if log_base != 2:
             raise NotImplementedError
 
         # self.use_mean = "geometric"
@@ -33,6 +33,8 @@ class CrossEntropy:
         else:
             self.fk = fk
             raise NotImplementedError
+
+        print("The k values are:",self.fk)
 
     def do_mean(self,n):
         if self.use_mean == "geometric":
@@ -82,7 +84,7 @@ class CrossEntropy:
         XES = np.mean(-((1-o)*np.log2(1-f)) - (o*np.log2(f)))
         return XES
 
-    def get_xes(self,from_components=False,return_all=False,use_dkl=False):
+    def compute_xes(self,from_components=False,return_all=False,use_dkl=False):
         """ Cross-entropy score.
         """
         if from_components:
@@ -108,7 +110,7 @@ class CrossEntropy:
         return (-(1-x) * np.log2(1-x)) - (x * np.log2(x))
 
     @classmethod
-    def get_entropy(cls,x,return_all=False):
+    def compute_entropy(cls,x,return_all=False):
         """ Average surprise. A series of values are returned if return_all.
         """
         with np.errstate(divide='ignore',invalid='ignore'):
@@ -152,7 +154,7 @@ class CrossEntropy:
         print(f"UNC = {UNC:.4f}")
         return UNC
 
-    def compute_UNC(self):
+    def compute_unc(self):
         p_o = self.do_mean(self.o)
         UNC = self.compute_entropy(p_o)
         print(f"UNC = {UNC:.4f}")
@@ -169,8 +171,8 @@ class CrossEntropy:
         return x
 
     def compute_xess(self,from_components=False):
-        UNC = self.compute_UNC()
-        XES = self.compute_XES(from_components=from_components)
+        UNC = self.compute_unc()
+        XES = self.compute_xes(from_components=from_components)
         XESS = (XES-UNC)/(0-UNC)
         return XESS
 
