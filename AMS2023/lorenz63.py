@@ -287,12 +287,17 @@ if __name__ == '__main__':
         probs_bound[probs_bound>1-thresh] = 1-thresh
         return probs_bound
 
-    def do_tw(arr,kernel_tw,min_thresh):
+    def do_tw(arr,kernel_tw,min_thresh,check_nans=True):
+        # Check for nans?
+
         # This is a maximum applied to a convolution as a rolling max
         # "Event within X epochs within the time window"
         conv_ts = np.convolve(arr,np.ones([kernel_tw,]),mode="same"
                                             ) > kernel_tw*min_thresh
         pass
+        # Trying to work out the weird TRUTH panel in plots for FSS-style tw
+        if np.nan in conv_ts:
+            assert True is False
         return conv_ts.astype(int)
 
     def asymmetrize(arr,lb=0.0005,ub=0.98):
@@ -322,14 +327,16 @@ if __name__ == '__main__':
                 sc_color = "maroon"
                 ss_color = "indianred"
                 # ls = '_'
-                ylim_sc = [0.0,0.16]
+                # ylim_sc = [0.0,0.16]
+                ylim_sc = None
             elif sc_type == "BS":
                 sc_name = "BS"
                 ss_name = "BSS"
                 sc_color = "darkblue"
                 ss_color = "lightblue"
                 # ls = '--'
-                ylim_sc = [0.0,0.016]
+                # ylim_sc = [0.0,0.016]
+                ylim_sc = None
             else:
                 raise Exception
 
@@ -358,14 +365,18 @@ if __name__ == '__main__':
                 sc_name = "XES"
                 dsc_color = "orangered"
                 rel_color = "peru"
-                ylim_dsc = [0.0,0.12]
-                ylim_rel = [0.0,0.04]
+                # ylim_dsc = [0.0,0.12]
+                # ylim_rel = [0.0,0.04]
+                ylim_dsc = None
+                ylim_rel = None
             elif sc_type == "BS":
                 sc_name = "BS"
                 dsc_color = "cadetblue"
                 rel_color = "steelblue"
-                ylim_dsc = [0.0,0.013]
-                ylim_rel = [0.0,0.0015]
+                # ylim_dsc = [0.0,0.013]
+                # ylim_rel = [0.0,0.0015]
+                ylim_dsc = None
+                ylim_rel = None
             else:
                 raise Exception
 
@@ -447,31 +458,26 @@ if __name__ == '__main__':
     ### Then concat-ensemble is the n experiments in one long time series
     # (Ignoring edge effects that are rare)
     # (Will have to consider loss
-    nexps = 3 # 25
-    nt_raw = 80E3 # 110E3
-    clip = 20E3
+    nexps = 10 # 25
+    nt_raw = 95E3 # 110E3
+    clip = 5E3
+    # clip = 500
     nt = nt_raw - clip
     overwrite = 1
     overwrite_tw = 1
-    npert = 5 # 50
-    nsubmem = 3 # 10
+    npert = 50
+    nsubmem = 20
     # FSS-style window, +/- either side:
-    # Eventually this will be a variable.
-    conv_tws = np.arange(5,30,4)
-    conv_tw = 15
-    # This is 0.4% right?
-    pc = 0.5
+    # Eventually this will be a variable?
+    # conv_tws = np.arange(5,30,4)
+    conv_tw = 11
+
+    pc = 1
     tw = 20 # time window for initial L63 timeseries - not FSS!
+    total_epochs = int(nt/tw)
+    rng = np.random.default_rng(27)
     # pert_exs = np.arange(-16.5,-13.05,0.2,dtype=float)
-
-    # _p1 = np.arange(-16.0,-15.49,0.25)
-    # _p2 = np.arange(-15.5,-13.49,0.1)
-    # _p3 = np.arange(-13.5,-10.49,0.25)
-    # pert_exs = np.concatenate([_p1,_p2,_p3])
-
-
-    # pert_exs = np.arange(-18.0,-7.9,0.5)
-    pert_exs = np.arange(-18.0,-7.9,2.0)
+    pert_exs = np.arange(-18.0,-7.9,0.5)
 
     min_thresh_f = 0.001
     min_thresh_o = 0.0005
@@ -525,31 +531,37 @@ if __name__ == '__main__':
     # Start by creating truths (exps) and plotting first 4 in panel plot
     # First we need a list of lists of x0, y0, z0 for each exp
 
-    EXP_XYZ = dict()
+    # Save x/y/z as base truth then perturb round for each experiment, then
+    # perturb round THAT for an ensemble with much smaller perts.
 
+    xs = []
+    ys = []
+    zs = []
+    for exp in range(nexps):
+        _x, _y, _z = get_new_xyz(x0,y0,z0,exp_pert,rng)
+        xs.append(_x)
+        ys.append(_y)
+        zs.append(_z)
+    EXP_XYZ = {n:(x,y,z) for n,(x,y,z) in enumerate(zip(xs,ys,zs))}
 
     # Loop over each new x0/y0/z0 and create the truth
-    TRUTH =
+    TRUTH = dict()
+    for nexp,exp in enumerate(range(nexps)):
+        TRUTH[exp] = create_truth(*EXP_XYZ[exp],perturb=None)
 
     # Concatenated truths
-    TRUTH_CC =
-
-
+    concat_len = total_epochs * nexps
+    truth_arr_cc = np.zeros([concat_len])
+    total_epochs = int(nt/tw)
+    for nexp, exp in enumerate(np.arange(nexps,dtype=int)):
+        truth_arr_cc[(nexp*total_epochs):(nexp+1)*total_epochs] = TRUTH[exp]
 
     ##################################################################
     ##################################################################
     ##################################################################
-
 
     control_1d = create_truth(x0,y0,z0,do_plot=True)
-    # total = len(control_1d)
-    # Aim for N,2N ratio for waffleplot
-
-    # Where is the control for the square heatmap plot? We want a 100x100
-    # control_2d = 0
     control_2d = generate_2d(control_1d,sq_len)
-    # control_2d = control_1d[:int(sq_len*sq_len)].reshape(sq_len,sq_len)
-    # fig.show()
 
     hm = HeatMap(control_2d,'../figures/heatmap_test.png')
     hm.plot(no_axis=True)
@@ -557,10 +569,6 @@ if __name__ == '__main__':
     hm.fig.show()
     pass
 
-    # This is now "truth" example - not used in any scoring.
-    # Save x/y/z as base truth then perturb round for each experiment, then
-    # perturb round THAT for an ensemble with much smaller perts.
-    # This avoids overlapping days
     _x0 = np.copy(x0)
     _y0 = np.copy(y0)
     _z0 = np.copy(z0)
@@ -582,7 +590,6 @@ if __name__ == '__main__':
 
     # Let's do 10 similar alternate realities.
     # Each has a slight perturbation to the initial conditions
-    rng = np.random.default_rng(27)
     # Not including truth
     nmembers = npert + 1
     # Is uncertainty constant - just the control?
@@ -606,7 +613,7 @@ if __name__ == '__main__':
         # What about memory? Maybe we move to a server?
 
 
-        total_epochs = int(nt/tw)
+        # total_epochs = int(nt/tw)
         pass
         # TODO: save data to disc if it doesn't exist.
         # Plot the first five members plus truth
@@ -627,13 +634,17 @@ if __name__ == '__main__':
         else:
             ensemble = np.zeros([nexps,nmembers,total_epochs])
             for nexp, exp in enumerate(np.arange(nexps)):
+            # EXP_XYZ = {n:(x,y,z) for n,(x,y,z) in enumerate((xs,ys,zs))}
+            # for nexp, exp in enumerate()
+                exp_x, exp_y, exp_z = EXP_XYZ[nexp]
                 print("Doing experiment/day",nexp+1)
+
                 # Draws samples to add to the initial conditions (new draw for each exp)
                 # A new TRUTH must be created for each
                 # A new experiment needs a new draw of x0, too
                 # Like centering a cone of uncertainty
                 ### THESE ARE FOR THIS EXP
-                x0, y0, z0 = get_new_xyz(_x0,_y0,_z0,exp_pert,rng)
+                # x0, y0, z0 = get_new_xyz(_x0,_y0,_z0,exp_pert,rng)
                 # exp_truth = create_truth(x0,y0,z0,do_plot=True)
                 perts = iter(rng.uniform(-max_pert,max_pert,npert*3))
 
@@ -642,13 +653,16 @@ if __name__ == '__main__':
                                                     axes.flat):
                     print("Generating and plotting ensemble member",member_name)
                     if nens == 0:
-                        data2d = generate_2d(exp_truth,sq_len)
-                        ensemble[nexp,0,:] = exp_truth
+                        # We have truth - drop in here
+                        data2d = generate_2d(TRUTH[nexp],sq_len)
+                        ensemble[nexp,0,:] = TRUTH[nexp]
                         if (nens < 6) and (nexp == 0):
                             ax.set_title("TRUTH")
                     else:
-                        ens_L63 = Lorenz63(x0+next(perts), y0+next(perts),
-                                                z0+next(perts),rho=rho)
+                        mem_x = exp_x + next(perts)
+                        mem_y = exp_y + next(perts)
+                        mem_z = exp_z + next(perts)
+                        ens_L63 = Lorenz63(mem_x, mem_y, mem_z, rho=rho)
                         ens_L63.integrate(nt_raw,clip=clip)
                         if (nens < 6) and (nexp == 0):
                             ax.set_title(member_name)
@@ -770,9 +784,6 @@ if __name__ == '__main__':
                 print("Convolving ensemble member",member_name)
                 if nens == 0:
                     # obs data needs to be independent of npt
-                    conv_ts = do_tw()
-
-                    # data2d = control_2d
                     # conv_ts = np.convolve(control_1d,np.ones([tw,]),mode="same") > 0
                     conv_ts = do_tw(cc_ensemble[0,:],conv_tw,min_thresh_o)
                     # data2d = conv_ts[:int(sq_len*sq_len)].reshape(sq_len,sq_len)
@@ -889,3 +900,34 @@ if __name__ == '__main__':
     #### How to do the time windowing to avoid curse of dimensionality
     # For each time, the x-width window centred on it is True if an event
     # occurs within that window.
+
+
+    # Could do mutual information of truth/ensemble over time to show drift
+    # (exponential?)
+    # Also show surprise-per-time-window? How to zoom in on one event
+    # What about power spectrum or proof of intermittency like Manneville?
+    # Error over time
+
+    # Show why BSS doesn't have same XES estimate
+    # How much is obs error (do independently)
+    # How much is rarity of event
+    # Try rarer event
+    # IG doesn't care about being off by one class/epoch, it is local and
+    # therefore not affected by intermittency. It is affected by rare
+    # events, however, or low-probability in the ensemble. Looking at 1%
+    # baserate in some ensembles (zoom in on period of forecast that
+    # has low probs and look at difference in reward from IGN and BS)
+
+    # (Run 100 members? Else we can't show small probability differences)
+
+    # If too long of the time series past predictability limit is evaluated,
+    # it only "waters" down the skill score value
+
+    # We can estimate predictability limit at this rho and max_pert!
+
+    # Look at mutual info of ensembles at high pert_size - are they clustered
+    # away from truth, or do they drift "symmetrically"?
+
+    # Could do difference between XESS/BSS over time on one graph
+    # Averaging over each experiment in chunks of 10% of time series length?
+    # Also mark where the zero line (no skill) is passed for each score
